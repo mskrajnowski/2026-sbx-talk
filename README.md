@@ -192,6 +192,35 @@ Sadly the source for `sbx`, the default templates and kits is not available publ
 You can pull the images and inspect them, you can also review the commands that created each layer to reverse-engineer a `Dockerfile`, e.g. [docker/sandbox-templates:opencode-docker
 ](https://hub.docker.com/layers/docker/sandbox-templates/opencode-docker/images/sha256-699739ce96cc51e8638795d29359a0cc07aab837e595a8d67d6c0d645b29c0c5), but if you wanted to build a template and kit from scratch there's nothing to base on.
 
+### Kit quirks
+
+The order of operations when setting up a sandbox with a kit is a bit odd in my opinion.
+
+`install` commands run before `initFiles` are added and static files are copied. This means you can't for example run `mise install` during the `install` phase if you want to provide `mise` configuration through static files.
+
+Sandbox does not wait for `startup` commands to finish before starting the entrypoint (agent harness), regardless if they are marked as `background` or not. So if you want to, e.g. run `mise install`, before running the agent harness, so that the agent has access to all the tools needed, you are out of luck. This is particularly annoying to debug, because `mise install` will run, so the second time you run the agent it will work fine.
+
+Because of these I ended up using `mise exec ...` as the entrypoint.
+
 ## My local setup
 
 [mskrajnowski/dotfiles/sbx](https://github.com/mskrajnowski/dotfiles/tree/40cbbc3719aacef57a0e7020b64a8e396b780847/sbx)
+
+## Summary
+
+Pros:
+
+- uses VMs for isolation
+- docker is pre-installed in the VM
+- credentials are not exposed
+- network policy is easy to set up
+
+Cons:
+
+- closed source, especially for a security-related tool
+- `/run/sandbox/source` exposes potentially sensitive information to the VM
+- requires a Docker account
+- broken Docker account credential management
+- policy inherited from Docker organization
+- using a custom local container image might be easier
+- weird kit behaviors
